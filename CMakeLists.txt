@@ -11,6 +11,7 @@ endif()
 
 option(PVZ_BUILD_TESTS "Собирать тесты (GoogleTest)" ON)
 
+find_package(Threads REQUIRED)
 find_package(libpqxx REQUIRED CONFIG)
 
 function(pvz_warnings target)
@@ -45,8 +46,9 @@ add_library(pvz_service STATIC
     src/service/CustomerService.cpp
     src/service/CellService.cpp
     src/service/OrderService.cpp
+    src/service/PeriodicWorker.cpp
 )
-target_link_libraries(pvz_service PUBLIC pvz_domain)
+target_link_libraries(pvz_service PUBLIC pvz_domain Threads::Threads)
 pvz_warnings(pvz_service)
 
 # --- repository/postgres: реализация репозиториев на PostgreSQL (libpqxx)
