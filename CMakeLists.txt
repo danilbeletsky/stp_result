@@ -24,6 +24,11 @@ endfunction()
 
 set(PVZ_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+# Слои собираются в отдельные библиотеки, и зависимости между ними видны в CMake:
+#   cli -> service -> domain
+#   repository/postgres -> domain, config, libpqxx
+# Сервисы и домен не линкуются с libpqxx, поэтому не могут случайно от неё зависеть.
+
 # --- domain: сущности предметной области
 add_library(pvz_domain STATIC
     src/domain/ParcelSize.cpp
@@ -60,6 +65,19 @@ add_library(pvz_postgres STATIC
 )
 target_link_libraries(pvz_postgres PUBLIC pvz_domain pvz_config libpqxx::pqxx)
 pvz_warnings(pvz_postgres)
+
+# --- cli: консольное меню
+add_library(pvz_cli STATIC
+    src/cli/Console.cpp
+    src/cli/App.cpp
+)
+target_link_libraries(pvz_cli PUBLIC pvz_service)
+pvz_warnings(pvz_cli)
+
+# --- приложение
+add_executable(pvz src/main.cpp)
+target_link_libraries(pvz PRIVATE pvz_cli pvz_service pvz_postgres pvz_config)
+pvz_warnings(pvz)
 
 if(PVZ_BUILD_TESTS)
     enable_testing()
