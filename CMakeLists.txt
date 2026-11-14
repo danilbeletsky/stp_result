@@ -28,3 +28,12 @@ add_library(pvz_domain STATIC
 )
 target_include_directories(pvz_domain PUBLIC ${PVZ_SRC})
 pvz_warnings(pvz_domain)
+
+# --- service: бизнес-логика (работает с интерфейсами из src/repository)
+add_library(pvz_service STATIC
+    src/service/CustomerService.cpp
+    src/service/CellService.cpp
+    src/service/OrderService.cpp
+)
+target_link_libraries(pvz_service PUBLIC pvz_domain)
+pvz_warnings(pvz_service)
