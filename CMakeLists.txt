@@ -31,6 +31,13 @@ add_library(pvz_domain STATIC
 target_include_directories(pvz_domain PUBLIC ${PVZ_SRC})
 pvz_warnings(pvz_domain)
 
+# --- config: настройки из файла и переменных окружения
+add_library(pvz_config STATIC
+    src/config/Config.cpp
+)
+target_link_libraries(pvz_config PUBLIC pvz_domain)
+pvz_warnings(pvz_config)
+
 # --- service: бизнес-логика (работает с интерфейсами из src/repository)
 add_library(pvz_service STATIC
     src/service/CustomerService.cpp

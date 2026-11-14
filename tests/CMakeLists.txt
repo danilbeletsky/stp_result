@@ -12,13 +12,14 @@ endif()
 
 include(GoogleTest)
 
-# Модульные тесты: домен, сервисы на репозиториях в памяти.
+# Модульные тесты: домен, сервисы на репозиториях в памяти, конфигурация.
 # PostgreSQL для них не нужен.
 add_executable(pvz_unit_tests
     domain_tests.cpp
     service_tests.cpp
+    config_tests.cpp
 )
 target_include_directories(pvz_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(pvz_unit_tests PRIVATE pvz_service GTest::gtest_main)
+target_link_libraries(pvz_unit_tests PRIVATE pvz_service pvz_config GTest::gtest_main)
 pvz_warnings(pvz_unit_tests)
 gtest_discover_tests(pvz_unit_tests)

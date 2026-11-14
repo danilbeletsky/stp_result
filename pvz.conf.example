@@ -1,0 +1,14 @@
+# Пример настроек. Скопируйте в pvz.conf и поправьте под себя:
+#   cp pvz.conf.example pvz.conf
+# Переменные окружения с теми же именами имеют приоритет над файлом.
+
+PVZ_DB_HOST=localhost
+PVZ_DB_PORT=5432
+PVZ_DB_NAME=pvz
+PVZ_DB_USER=postgres
+PVZ_DB_PASSWORD=
+
+# Сколько дней заказ хранится в пункте выдачи до возврата отправителю.
+PVZ_STORAGE_DAYS=7
+# Как часто фоновый поток ищет просроченные заказы, в секундах.
+PVZ_CHECK_INTERVAL_SEC=60
