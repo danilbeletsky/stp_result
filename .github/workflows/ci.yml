@@ -1,0 +1,166 @@
+name: PVZ CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Новый push в ту же ветку отменяет ещё идущую проверку старого коммита.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LIBPQXX_VERSION: 8.0.2
+
+jobs:
+  # Ubuntu: GCC, PostgreSQL в сервисном контейнере, libpqxx собирается из исходников
+  # (в apt она старее) и кэшируется между запусками.
+  linux:
+    name: ubuntu-latest (GCC)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pvz
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # для psql
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      # для приложения и тестов
+      PVZ_DB_HOST: localhost
+      PVZ_DB_USER: postgres
+      PVZ_DB_PASSWORD: postgres
+      PVZ_TEST_DB_NAME: pvz_test
+
+    steps:
+      - name: Get the source
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libpq-dev libgtest-dev postgresql-client
+          cmake --version
+          g++ --version
+
+      - name: Cache libpqxx
+        id: cache-libpqxx
+        uses: actions/cache@v4
+        with:
+          path: ~/libpqxx
+          key: ${{ runner.os }}-libpqxx-${{ env.LIBPQXX_VERSION }}-${{ hashFiles('ci/install-libpqxx.sh') }}
+
+      - name: Build libpqxx
+        if: steps.cache-libpqxx.outputs.cache-hit != 'true'
+        run: bash ci/install-libpqxx.sh "$LIBPQXX_VERSION" "$HOME/libpqxx"
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$HOME/libpqxx"
+          -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Create test database
+        run: createdb pvz_test
+
+      - name: Test
+        run: |
+          mkdir -p test-results
+          ctest --test-dir build --output-on-failure \
+            --output-junit "$PWD/test-results/junit.xml"
+
+      - name: Smoke test of the application
+        run: bash ci/smoke-test.sh build/pvz pvz
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-linux
+          path: test-results/
+          if-no-files-found: warn
+
+      - name: Upload application
+        uses: actions/upload-artifact@v4
+        with:
+          name: pvz-linux
+          path: build/pvz
+
+  # macOS: Apple Clang, всё из Homebrew, PostgreSQL запускается на самом runner
+  # (сервисные контейнеры GitHub на macOS не поддерживаются).
+  macos:
+    name: macos-latest (Clang)
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    env:
+      PGHOST: localhost
+      PVZ_DB_HOST: localhost
+      PVZ_TEST_DB_NAME: pvz_test
+
+    steps:
+      - name: Get the source
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+        run: |
+          brew install libpqxx googletest postgresql@16
+          echo "$(brew --prefix postgresql@16)/bin" >> "$GITHUB_PATH"
+
+      - name: Start PostgreSQL
+        run: |
+          brew services start postgresql@16
+          for i in $(seq 1 30); do
+            pg_isready -h localhost && break
+            sleep 1
+          done
+          pg_isready -h localhost
+          createdb pvz
+          createdb pvz_test
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: |
+          mkdir -p test-results
+          ctest --test-dir build --output-on-failure \
+            --output-junit "$PWD/test-results/junit.xml"
+
+      - name: Smoke test of the application
+        run: bash ci/smoke-test.sh build/pvz pvz
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-macos
+          path: test-results/
+          if-no-files-found: warn

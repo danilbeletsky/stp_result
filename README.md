@@ -1,5 +1,7 @@
 # Пункт выдачи заказов (ПВЗ)
 
+[![PVZ CI](https://github.com/danilbeletsky/stp_result/actions/workflows/ci.yml/badge.svg)](https://github.com/danilbeletsky/stp_result/actions/workflows/ci.yml)
+
 Консольное приложение на C++20 для оператора пункта выдачи: приём посылок в ячейки,
 выдача по коду из SMS, возврат отправителю, учёт клиентов и ячеек.
 Данные хранятся в PostgreSQL. Фоновый поток раз в минуту возвращает отправителю заказы,
@@ -101,6 +103,21 @@ createdb pvz_test
 PVZ_TEST_DB_NAME=pvz_test ctest --test-dir build --output-on-failure
 ```
 
+## CI
+
+GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) запускается на каждый
+push и pull request, два задания идут параллельно:
+
+| Задание | Компилятор | PostgreSQL | libpqxx |
+|---|---|---|---|
+| `ubuntu-latest` | GCC | сервисный контейнер `postgres:16` | собирается из исходников ([ci/install-libpqxx.sh](ci/install-libpqxx.sh)), кэшируется |
+| `macos-latest` | Apple Clang | Homebrew, запускается на runner | Homebrew |
+
+Шаги: сборка с `-DCMAKE_COMPILE_WARNING_AS_ERROR=ON` → все тесты, включая интеграционные
+на настоящей базе → smoke-тест готового приложения ([ci/smoke-test.sh](ci/smoke-test.sh)):
+применяет `init.sql` и `seed.sql`, проходит сценарий в меню и проверяет код выхода 3 без базы.
+Отчёт тестов (JUnit) и собранный `pvz` выкладываются в артефакты запуска.
+
 ## Устройство
 
 ```
@@ -114,6 +131,7 @@ src/
 └── main.cpp      сборка объектов и передача зависимостей
 sql/              init.sql — схема, seed.sql — демо-данные
 tests/            GoogleTest
+ci/               скрипты для CI: сборка libpqxx и smoke-тест
 ```
 
 Зависимости направлены внутрь: `cli → service → domain`, `repository/postgres → domain`.
