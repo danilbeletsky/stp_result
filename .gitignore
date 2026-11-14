@@ -1,0 +1,9 @@
+build/
+build-*/
+cmake-build-*/
+.vscode/
+.idea/
+.DS_Store
+
+# Локальные настройки с паролем не коммитим, в репозитории только pvz.conf.example.
+pvz.conf
