@@ -11,6 +11,8 @@ endif()
 
 option(PVZ_BUILD_TESTS "Собирать тесты (GoogleTest)" ON)
 
+find_package(libpqxx REQUIRED CONFIG)
+
 function(pvz_warnings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
@@ -46,6 +48,16 @@ add_library(pvz_service STATIC
 )
 target_link_libraries(pvz_service PUBLIC pvz_domain)
 pvz_warnings(pvz_service)
+
+# --- repository/postgres: реализация репозиториев на PostgreSQL (libpqxx)
+add_library(pvz_postgres STATIC
+    src/repository/postgres/PgDatabase.cpp
+    src/repository/postgres/PgCustomerRepository.cpp
+    src/repository/postgres/PgCellRepository.cpp
+    src/repository/postgres/PgOrderRepository.cpp
+)
+target_link_libraries(pvz_postgres PUBLIC pvz_domain pvz_config libpqxx::pqxx)
+pvz_warnings(pvz_postgres)
 
 if(PVZ_BUILD_TESTS)
     enable_testing()

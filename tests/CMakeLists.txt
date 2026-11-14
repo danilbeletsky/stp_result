@@ -23,3 +23,10 @@ target_include_directories(pvz_unit_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(pvz_unit_tests PRIVATE pvz_service pvz_config GTest::gtest_main)
 pvz_warnings(pvz_unit_tests)
 gtest_discover_tests(pvz_unit_tests)
+
+# Интеграционные тесты репозиториев PostgreSQL (пропускаются без PVZ_TEST_DB_NAME).
+add_executable(pvz_pg_tests pg_repository_tests.cpp)
+target_link_libraries(pvz_pg_tests PRIVATE pvz_postgres GTest::gtest_main)
+target_compile_definitions(pvz_pg_tests PRIVATE PVZ_SQL_DIR="${PROJECT_SOURCE_DIR}/sql")
+pvz_warnings(pvz_pg_tests)
+gtest_discover_tests(pvz_pg_tests)
