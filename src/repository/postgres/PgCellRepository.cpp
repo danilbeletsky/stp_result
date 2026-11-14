@@ -1,6 +1,7 @@
 #include "repository/postgres/PgCellRepository.h"
 
 #include "repository/StorageError.h"
+#include "repository/postgres/PgRow.h"
 
 namespace pvz {
 
@@ -9,9 +10,11 @@ namespace {
 // Порядок размеров S < M < L, совпадает с sizeRank() в домене.
 constexpr const char* kSizeRankSql = "(CASE c.size WHEN 'S' THEN 1 WHEN 'M' THEN 2 ELSE 3 END)";
 
-Cell toCell(const pqxx::row& row) {
-    return Cell(row["id"].as<Id>(), row["code"].as<std::string>(),
-                parseParcelSize(row["size"].as<std::string>()));
+// Row — pqxx::row или pqxx::row_ref, см. PgRow.h.
+template <typename Row>
+Cell toCell(const Row& row) {
+    return Cell(pgrow::get<Id>(row["id"]), pgrow::get<std::string>(row["code"]),
+                parseParcelSize(pgrow::get<std::string>(row["size"])));
 }
 
 } // namespace

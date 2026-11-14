@@ -1,14 +1,17 @@
 #include "repository/postgres/PgCustomerRepository.h"
 
 #include "repository/StorageError.h"
+#include "repository/postgres/PgRow.h"
 
 namespace pvz {
 
 namespace {
 
-Customer toCustomer(const pqxx::row& row) {
-    return Customer(row["id"].as<Id>(), row["full_name"].as<std::string>(),
-                    row["phone"].as<std::string>());
+// Row — pqxx::row или pqxx::row_ref, см. PgRow.h.
+template <typename Row>
+Customer toCustomer(const Row& row) {
+    return Customer(pgrow::get<Id>(row["id"]), pgrow::get<std::string>(row["full_name"]),
+                    pgrow::get<std::string>(row["phone"]));
 }
 
 } // namespace

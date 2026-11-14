@@ -1,6 +1,7 @@
 #include "repository/postgres/PgOrderRepository.h"
 
 #include "repository/StorageError.h"
+#include "repository/postgres/PgRow.h"
 #include "repository/postgres/PgTime.h"
 
 #include <cstdint>
@@ -15,20 +16,20 @@ constexpr const char* kSelectOrders =
     "       EXTRACT(EPOCH FROM closed_at)::BIGINT AS closed_at "
     "FROM orders ";
 
-Order toOrder(const pqxx::row& row) {
+// Row — pqxx::row или pqxx::row_ref, см. PgRow.h.
+template <typename Row>
+Order toOrder(const Row& row) {
     OrderRecord record;
-    record.id = row["id"].as<Id>();
-    record.trackingCode = row["tracking_code"].as<std::string>();
-    record.customerId = row["customer_id"].as<Id>();
-    if (!row["cell_id"].is_null()) {
-        record.cellId = row["cell_id"].as<Id>();
-    }
-    record.parcelSize = parseParcelSize(row["parcel_size"].as<std::string>());
-    record.pickupCode = row["pickup_code"].as<std::string>();
-    record.status = parseOrderStatus(row["status"].as<std::string>());
-    record.receivedAt = pgtime::fromEpochSeconds(row["received_at"].as<std::int64_t>());
-    if (!row["closed_at"].is_null()) {
-        record.closedAt = pgtime::fromEpochSeconds(row["closed_at"].as<std::int64_t>());
+    record.id = pgrow::get<Id>(row["id"]);
+    record.trackingCode = pgrow::get<std::string>(row["tracking_code"]);
+    record.customerId = pgrow::get<Id>(row["customer_id"]);
+    record.cellId = pgrow::getOptional<Id>(row["cell_id"]);
+    record.parcelSize = parseParcelSize(pgrow::get<std::string>(row["parcel_size"]));
+    record.pickupCode = pgrow::get<std::string>(row["pickup_code"]);
+    record.status = parseOrderStatus(pgrow::get<std::string>(row["status"]));
+    record.receivedAt = pgtime::fromEpochSeconds(pgrow::get<std::int64_t>(row["received_at"]));
+    if (auto closed = pgrow::getOptional<std::int64_t>(row["closed_at"])) {
+        record.closedAt = pgtime::fromEpochSeconds(*closed);
     }
     return Order::restore(std::move(record));
 }
