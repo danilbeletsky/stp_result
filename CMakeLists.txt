@@ -9,6 +9,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+option(PVZ_BUILD_TESTS "Собирать тесты (GoogleTest)" ON)
+
 function(pvz_warnings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
@@ -37,3 +39,8 @@ add_library(pvz_service STATIC
 )
 target_link_libraries(pvz_service PUBLIC pvz_domain)
 pvz_warnings(pvz_service)
+
+if(PVZ_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
